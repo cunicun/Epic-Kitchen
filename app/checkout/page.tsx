@@ -65,11 +65,11 @@ export default function CheckoutPage() {
       return
     }
 
-    // For COD, proceed directly
+    // For COD, show receipt details
     if (paymentMethod === "cod") {
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-      clearCart()
-      router.push("/success?method=cod")
+      setShowPaymentDetails(true)
+      setIsProcessing(false)
+      return
     }
   }
 
@@ -92,10 +92,105 @@ export default function CheckoutPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-center">
-                {paymentMethod === "transfer" ? "Transfer Bank" : "Pembayaran E-Wallet"}
+                {paymentMethod === "transfer" && "Transfer Bank"}
+                {paymentMethod === "ewallet" && "Pembayaran E-Wallet"}
+                {paymentMethod === "cod" && "Nota Pembayaran - Bayar di Tempat"}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
+              {paymentMethod === "cod" && (
+                <div className="bg-white border-2 border-dashed border-gray-300 p-6 rounded-lg">
+                  {/* Receipt Header */}
+                  <div className="text-center border-b border-gray-300 pb-4 mb-4">
+                    <h2 className="text-xl font-bold">PRADA EPIC KITCHEN</h2>
+                    <p className="text-sm text-gray-600">Peralatan Dapur Berkualitas</p>
+                    <p className="text-xs text-gray-500">📍 Jakarta, Indonesia | 📞 +62 21 1234 5678</p>
+                  </div>
+
+                  {/* Order Details */}
+                  <div className="mb-4">
+                    <div className="flex justify-between text-sm mb-2">
+                      <span>No. Pesanan:</span>
+                      <span className="font-bold">#PEK-{Date.now().toString().slice(-6)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span>Tanggal:</span>
+                      <span>{new Date().toLocaleDateString("id-ID")}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Metode Pembayaran:</span>
+                      <span className="font-semibold">Cash on Delivery (COD)</span>
+                    </div>
+                  </div>
+
+                  {/* Items List */}
+                  <div className="border-t border-b border-gray-300 py-4 mb-4">
+                    <h4 className="font-semibold mb-3">DETAIL PESANAN:</h4>
+                    {items.map((item, index) => (
+                      <div key={item.product.id} className="flex justify-between text-sm mb-2">
+                        <div className="flex-1">
+                          <span className="block">
+                            {index + 1}. {item.product.name}
+                          </span>
+                          <span className="text-gray-600 text-xs">
+                            {formatPrice(item.product.price)} x {item.quantity}
+                          </span>
+                        </div>
+                        <span className="font-medium">{formatPrice(item.product.price * item.quantity)}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Price Breakdown */}
+                  <div className="space-y-2 mb-4">
+                    <div className="flex justify-between text-sm">
+                      <span>Subtotal ({getTotalItems()} item):</span>
+                      <span>{formatPrice(getTotalPrice())}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Ongkos Kirim:</span>
+                      <span>{shippingCost === 0 ? "GRATIS" : formatPrice(shippingCost)}</span>
+                    </div>
+                    <div className="border-t border-gray-300 pt-2">
+                      <div className="flex justify-between font-bold text-lg">
+                        <span>TOTAL BAYAR:</span>
+                        <span className="text-red-600">{formatPrice(totalAmount)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Payment Instructions */}
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                    <h4 className="font-semibold text-yellow-800 mb-2">📋 INSTRUKSI PEMBAYARAN:</h4>
+                    <ul className="text-sm text-yellow-700 space-y-1">
+                      <li>
+                        • Siapkan uang pas sejumlah <strong>{formatPrice(totalAmount)}</strong>
+                      </li>
+                      <li>• Pembayaran dilakukan saat barang tiba</li>
+                      <li>• Periksa kondisi barang sebelum pembayaran</li>
+                      <li>• Simpan nota ini sebagai bukti pesanan</li>
+                    </ul>
+                  </div>
+
+                  {/* Contact Info */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <h4 className="font-semibold text-blue-800 mb-2">📞 INFORMASI PENGIRIMAN:</h4>
+                    <div className="text-sm text-blue-700 space-y-1">
+                      <p>• Kurir akan menghubungi Anda sebelum pengiriman</p>
+                      <p>• Estimasi pengiriman: 1-3 hari kerja</p>
+                      <p>• Hubungi CS: +62 812 3456 7890 (WhatsApp)</p>
+                    </div>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="text-center text-xs text-gray-500 border-t border-gray-300 pt-4">
+                    <p>Terima kasih telah berbelanja di Prada Epic Kitchen!</p>
+                    <p>Barang yang sudah dibeli tidak dapat dikembalikan kecuali ada kerusakan.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Existing transfer and ewallet sections remain the same */}
               {paymentMethod === "transfer" && (
                 <div className="text-center space-y-4">
                   <div className="bg-blue-50 p-6 rounded-lg">
@@ -176,7 +271,7 @@ export default function CheckoutPage() {
                   Kembali
                 </Button>
                 <Button onClick={handlePaymentConfirmation} disabled={isProcessing} className="flex-1">
-                  {isProcessing ? "Memproses..." : "Saya Sudah Bayar"}
+                  {isProcessing ? "Memproses..." : paymentMethod === "cod" ? "Konfirmasi Pesanan" : "Saya Sudah Bayar"}
                 </Button>
               </div>
             </CardContent>
