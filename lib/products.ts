@@ -14,77 +14,12 @@ export const categories = [
 ]
 
 export const products: Product[] = [
-  // Featured Products
-  {
-    id: "1",
-    name: "Kotak Makanan Premium Set",
-    price: 125000,
-    originalPrice: 150000,
-    image: "/placeholder.svg?height=300&width=300",
-    category: "kotak-makanan",
-    description: "Set kotak makanan premium dengan 5 ukuran berbeda, tahan panas dan dingin, BPA free",
-    featured: true,
-    inStock: true,
-    rating: 4.8,
-    reviews: 124,
-  },
-  {
-    id: "2",
-    name: "Lunch Set Elegant",
-    price: 89000,
-    originalPrice: 110000,
-    image: "/placeholder.svg?height=300&width=300",
-    category: "lunch-set",
-    description: "Lunch set lengkap dengan tas isolasi, sendok garpu, dan tempat minum",
-    featured: true,
-    inStock: true,
-    rating: 4.7,
-    reviews: 89,
-  },
-  {
-    id: "3",
-    name: "Mangkok Kristal Luxury",
-    price: 75000,
-    image: "/placeholder.svg?height=300&width=300",
-    category: "mangkok",
-    description: "Mangkok kristal berkualitas tinggi, cocok untuk hidangan istimewa",
-    featured: true,
-    inStock: true,
-    rating: 4.9,
-    reviews: 156,
-  },
-  {
-    id: "4",
-    name: "Eco Botol Ramah Lingkungan",
-    price: 45000,
-    originalPrice: 55000,
-    image: "/placeholder.svg?height=300&width=300",
-    category: "eco-botol",
-    description: "Botol minum eco-friendly, tahan panas, kapasitas 500ml",
-    featured: true,
-    inStock: true,
-    rating: 4.6,
-    reviews: 203,
-  },
-  {
-    id: "5",
-    name: "Cannister Set Modern",
-    price: 95000,
-    image: "/placeholder.svg?height=300&width=300",
-    category: "cannister",
-    description: "Set 3 cannister modern untuk penyimpanan bahan makanan kering",
-    featured: true,
-    inStock: true,
-    rating: 4.8,
-    reviews: 67,
-  },
-
-  // Category Products
+  // Category Products with real images
   {
     id: "6",
     name: "Wadah Tisu Kayu Premium",
     price: 35000,
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/images/wadah-tisu.jpg",
     category: "wadah-tisu",
     description: "Wadah tisu dari kayu berkualitas dengan desain minimalis",
     inStock: true,
@@ -96,7 +31,7 @@ export const products: Product[] = [
     name: "Mangkok Keramik Set 6pcs",
     price: 120000,
     originalPrice: 140000,
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/images/mangkok.jpg",
     category: "mangkok",
     description: "Set 6 mangkok keramik dengan berbagai ukuran",
     inStock: true,
@@ -107,7 +42,7 @@ export const products: Product[] = [
     id: "8",
     name: "Panci Anti Lengket 24cm",
     price: 185000,
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/images/panci.jpg",
     category: "panci",
     description: "Panci anti lengket dengan lapisan ceramic coating",
     inStock: true,
@@ -118,7 +53,7 @@ export const products: Product[] = [
     id: "9",
     name: "Tutup Makanan Silikon Fleksibel",
     price: 25000,
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/images/tutup-makanan.jpg",
     category: "tutup-makanan",
     description: "Set tutup makanan silikon yang dapat meregang",
     inStock: true,
@@ -129,7 +64,7 @@ export const products: Product[] = [
     id: "10",
     name: "Cangkir Kopi Keramik Premium",
     price: 55000,
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/images/cangkir.jpg",
     category: "cangkir",
     description: "Cangkir kopi keramik dengan desain elegan",
     inStock: true,
@@ -140,7 +75,7 @@ export const products: Product[] = [
     id: "11",
     name: "Set Sendok Garpu Stainless Steel",
     price: 65000,
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/images/sendok-garpu.jpg",
     category: "sendok-garpu",
     description: "Set lengkap sendok garpu dari stainless steel food grade",
     inStock: true,
@@ -151,7 +86,7 @@ export const products: Product[] = [
     id: "12",
     name: "Ring Adonan Adjustable",
     price: 40000,
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/images/ring-adonan.jpg",
     category: "ring-adonan",
     description: "Ring adonan yang dapat disesuaikan ukurannya",
     inStock: true,
@@ -162,7 +97,7 @@ export const products: Product[] = [
     id: "13",
     name: "Telenan Bambu Antibakteri",
     price: 45000,
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/images/telenan.jpg",
     category: "telenan",
     description: "Telenan bambu dengan sifat antibakteri alami",
     inStock: true,
@@ -173,7 +108,7 @@ export const products: Product[] = [
     id: "14",
     name: "Toples Kaca Hermetis 1L",
     price: 35000,
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/images/toples.jpg",
     category: "toples",
     description: "Toples kaca dengan penutup hermetis, kapasitas 1 liter",
     inStock: true,
@@ -184,7 +119,7 @@ export const products: Product[] = [
     id: "15",
     name: "Rolling Pin Kayu Solid",
     price: 30000,
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/images/rol-adonan.jpg",
     category: "rolling-pin",
     description: "Rolling pin dari kayu solid untuk menggulung adonan",
     inStock: true,
@@ -193,14 +128,16 @@ export const products: Product[] = [
   },
 ]
 
+// Remove getFeaturedProducts function and update getProductsByCategory
 export const getProductsByCategory = (category: string) => {
   return products.filter((product) => product.category === category)
 }
 
-export const getFeaturedProducts = () => {
-  return products.filter((product) => product.featured)
-}
-
 export const getProductById = (id: string) => {
   return products.find((product) => product.id === id)
+}
+
+// Get some popular products instead of featured
+export const getPopularProducts = () => {
+  return products.slice(0, 6) // Return first 6 products as popular
 }

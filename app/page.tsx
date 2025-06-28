@@ -2,10 +2,10 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ProductCard } from "@/components/product-card"
-import { categories, getFeaturedProducts } from "@/lib/products"
+import { categories, getPopularProducts } from "@/lib/products"
 
 export default function HomePage() {
-  const featuredProducts = getFeaturedProducts()
+  const popularProducts = getPopularProducts()
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -40,17 +40,17 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Featured Products Section */}
+      {/* Popular Products Section */}
       <section className="py-16">
         <div className="container">
           <div className="flex items-center justify-between mb-12">
-            <h2 className="text-3xl font-bold">Produk Unggulan</h2>
+            <h2 className="text-3xl font-bold">Produk Populer</h2>
             <Link href="/products">
               <Button variant="outline">Lihat Semua</Button>
             </Link>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-            {featuredProducts.map((product) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+            {popularProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
