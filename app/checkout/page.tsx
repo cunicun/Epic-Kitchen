@@ -11,12 +11,16 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
 import { useCart } from "@/lib/cart-context"
+import { QrCode, Copy, CheckCircle } from "lucide-react"
 
 export default function CheckoutPage() {
   const router = useRouter()
   const { items, getTotalPrice, getTotalItems, clearCart } = useCart()
   const [isProcessing, setIsProcessing] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState("transfer")
+  const [showPaymentDetails, setShowPaymentDetails] = useState(false)
+  const [transferCode, setTransferCode] = useState("")
+  const [copied, setCopied] = useState(false)
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -29,21 +33,157 @@ export default function CheckoutPage() {
   const shippingCost = getTotalPrice() >= 100000 ? 0 : 15000
   const totalAmount = getTotalPrice() + shippingCost
 
+  // Generate random transfer code
+  const generateTransferCode = () => {
+    const code = Math.floor(Math.random() * 900000) + 100000 // 6 digit random number
+    return code.toString()
+  }
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsProcessing(true)
 
-    // Simulate payment processing
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    // Generate transfer code for bank transfer
+    if (paymentMethod === "transfer") {
+      const code = generateTransferCode()
+      setTransferCode(code)
+      setShowPaymentDetails(true)
+      setIsProcessing(false)
+      return
+    }
 
-    // Clear cart and redirect to success page
+    // For e-wallet, show QR code
+    if (paymentMethod === "ewallet") {
+      setShowPaymentDetails(true)
+      setIsProcessing(false)
+      return
+    }
+
+    // For COD, proceed directly
+    if (paymentMethod === "cod") {
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+      clearCart()
+      router.push("/success?method=cod")
+    }
+  }
+
+  const handlePaymentConfirmation = async () => {
+    setIsProcessing(true)
+    await new Promise((resolve) => setTimeout(resolve, 2000))
     clearCart()
-    router.push("/success")
+    router.push(`/success?method=${paymentMethod}&code=${transferCode}`)
   }
 
   if (items.length === 0) {
     router.push("/cart")
     return null
+  }
+
+  if (showPaymentDetails) {
+    return (
+      <div className="container py-8">
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-center">
+                {paymentMethod === "transfer" ? "Transfer Bank" : "Pembayaran E-Wallet"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {paymentMethod === "transfer" && (
+                <div className="text-center space-y-4">
+                  <div className="bg-blue-50 p-6 rounded-lg">
+                    <h3 className="font-semibold mb-4">Detail Transfer Bank</h3>
+                    <div className="space-y-2 text-left">
+                      <div className="flex justify-between">
+                        <span>Bank:</span>
+                        <span className="font-semibold">BCA</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>No. Rekening:</span>
+                        <span className="font-semibold">1234567890</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Atas Nama:</span>
+                        <span className="font-semibold">Prada Epic Kitchen</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Jumlah Transfer:</span>
+                        <span className="font-semibold text-lg text-blue-600">{formatPrice(totalAmount)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-yellow-50 p-4 rounded-lg">
+                    <h4 className="font-semibold mb-2">Kode Transfer Unik</h4>
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="text-2xl font-bold text-yellow-600">{transferCode}</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => copyToClipboard(transferCode)}
+                        className="ml-2"
+                      >
+                        {copied ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-2">
+                      Tambahkan kode ini di akhir nominal transfer untuk verifikasi otomatis
+                    </p>
+                  </div>
+
+                  <div className="text-sm text-gray-600">
+                    <p>• Transfer sesuai nominal yang tertera</p>
+                    <p>• Sertakan kode unik di akhir nominal</p>
+                    <p>• Pembayaran akan diverifikasi otomatis</p>
+                  </div>
+                </div>
+              )}
+
+              {paymentMethod === "ewallet" && (
+                <div className="text-center space-y-4">
+                  <div className="bg-green-50 p-6 rounded-lg">
+                    <h3 className="font-semibold mb-4">Scan QR Code</h3>
+                    <div className="flex justify-center mb-4">
+                      <div className="bg-white p-4 rounded-lg shadow-md">
+                        <QrCode className="h-48 w-48 text-gray-800" />
+                      </div>
+                    </div>
+                    <p className="text-lg font-semibold text-green-600">{formatPrice(totalAmount)}</p>
+                  </div>
+
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="font-semibold mb-2">Cara Pembayaran:</h4>
+                    <div className="text-sm text-left space-y-1">
+                      <p>1. Buka aplikasi GoPay/OVO/DANA</p>
+                      <p>2. Pilih "Scan QR" atau "Bayar"</p>
+                      <p>3. Scan QR code di atas</p>
+                      <p>4. Konfirmasi pembayaran</p>
+                      <p>5. Klik "Saya Sudah Bayar" di bawah</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-4">
+                <Button variant="outline" onClick={() => setShowPaymentDetails(false)} className="flex-1">
+                  Kembali
+                </Button>
+                <Button onClick={handlePaymentConfirmation} disabled={isProcessing} className="flex-1">
+                  {isProcessing ? "Memproses..." : "Saya Sudah Bayar"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -104,7 +244,7 @@ export default function CheckoutPage() {
                 <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="transfer" id="transfer" />
-                    <Label htmlFor="transfer">Transfer Bank</Label>
+                    <Label htmlFor="transfer">Transfer Bank (BCA)</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="ewallet" id="ewallet" />
@@ -154,7 +294,7 @@ export default function CheckoutPage() {
                 </div>
 
                 <Button type="submit" className="w-full" size="lg" disabled={isProcessing}>
-                  {isProcessing ? "Memproses..." : "Bayar Sekarang"}
+                  {isProcessing ? "Memproses..." : "Lanjut ke Pembayaran"}
                 </Button>
               </CardContent>
             </Card>
