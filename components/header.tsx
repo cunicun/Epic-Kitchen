@@ -1,17 +1,30 @@
 "use client"
 
 import Link from "next/link"
-import { ShoppingCart, Search, Menu, User } from "lucide-react"
+import { ShoppingCart, Search, Menu, User, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { useCart } from "@/lib/cart-context"
+import { useUser } from "@/lib/user-context"
 import { categories } from "@/lib/products"
 
 export function Header() {
   const { getTotalItems } = useCart()
+  const { user, isAuthenticated, logout } = useUser()
   const totalItems = getTotalItems()
+
+  const handleLogout = () => {
+    logout()
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -78,6 +91,16 @@ export function Header() {
                     </Link>
                   ))}
                 </div>
+                {isAuthenticated && (
+                  <div className="flex flex-col space-y-2 pt-4 border-t">
+                    <Link href="/account" className="text-sm">
+                      Akun Saya
+                    </Link>
+                    <button onClick={handleLogout} className="text-sm text-left text-red-600">
+                      Keluar
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </SheetContent>
@@ -90,10 +113,41 @@ export function Header() {
             </div>
           </div>
           <nav className="flex items-center space-x-2">
-            <Button variant="ghost" size="icon">
-              <User className="h-5 w-5" />
-              <span className="sr-only">Account</span>
-            </Button>
+            {isAuthenticated ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <User className="h-5 w-5" />
+                    <span className="sr-only">Account Menu</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <div className="px-2 py-1.5">
+                    <p className="text-sm font-medium">{user?.name}</p>
+                    <p className="text-xs text-muted-foreground">{user?.email}</p>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/account">
+                      <User className="mr-2 h-4 w-4" />
+                      Akun Saya
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Keluar
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Link href="/login">
+                <Button variant="ghost" size="icon">
+                  <User className="h-5 w-5" />
+                  <span className="sr-only">Login</span>
+                </Button>
+              </Link>
+            )}
             <Link href="/cart">
               <Button variant="ghost" size="icon" className="relative">
                 <ShoppingCart className="h-5 w-5" />

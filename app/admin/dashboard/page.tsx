@@ -1,71 +1,59 @@
 "use client"
 
-import { AdminLayout } from "@/components/admin-layout"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { AdminLayout } from "@/components/admin-layout"
+import { useAdmin } from "@/lib/admin-context"
 import { useOrders } from "@/lib/orders-context"
-import { products } from "@/lib/products"
-import { ShoppingCart, Package, Users, TrendingUp, Clock, CheckCircle, Truck, AlertCircle } from "lucide-react"
+import { Users, Package, ShoppingCart, TrendingUp, Clock, CheckCircle, AlertCircle, DollarSign } from "lucide-react"
 
-export default function AdminDashboardPage() {
+export default function AdminDashboard() {
+  const router = useRouter()
+  const { isAuthenticated } = useAdmin()
   const { orders } = useOrders()
+  const [stats, setStats] = useState({
+    totalOrders: 0,
+    totalRevenue: 0,
+    pendingOrders: 0,
+    completedOrders: 0,
+    totalCustomers: 0,
+    recentOrders: [] as any[],
+  })
 
-  const stats = {
-    totalOrders: orders.length,
-    totalProducts: products.length,
-    totalCustomers: new Set(orders.map((order) => order.email)).size,
-    totalRevenue: orders.reduce((sum, order) => sum + order.total, 0),
-    pendingOrders: orders.filter((order) => order.status === "pending").length,
-    confirmedOrders: orders.filter((order) => order.status === "confirmed").length,
-    shippedOrders: orders.filter((order) => order.status === "shipped").length,
-    deliveredOrders: orders.filter((order) => order.status === "delivered").length,
-  }
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(price)
-  }
-
-  const recentOrders = orders.slice(0, 5)
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "text-yellow-600 bg-yellow-100"
-      case "confirmed":
-        return "text-blue-600 bg-blue-100"
-      case "processing":
-        return "text-purple-600 bg-purple-100"
-      case "shipped":
-        return "text-orange-600 bg-orange-100"
-      case "delivered":
-        return "text-green-600 bg-green-100"
-      case "cancelled":
-        return "text-red-600 bg-red-100"
-      default:
-        return "text-gray-600 bg-gray-100"
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/admin/login")
+      return
     }
-  }
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "Menunggu"
-      case "confirmed":
-        return "Dikonfirmasi"
-      case "processing":
-        return "Diproses"
-      case "shipped":
-        return "Dikirim"
-      case "delivered":
-        return "Terkirim"
-      case "cancelled":
-        return "Dibatalkan"
-      default:
-        return status
-    }
+    // Calculate statistics
+    const totalOrders = orders.length
+    const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0)
+    const pendingOrders = orders.filter((order) => order.status === "pending").length
+    const completedOrders = orders.filter((order) => order.status === "completed").length
+
+    // Get unique customers
+    const uniqueCustomers = new Set(orders.map((order) => order.customerEmail)).size
+
+    // Get recent orders (last 5)
+    const recentOrders = orders
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 5)
+
+    setStats({
+      totalOrders,
+      totalRevenue,
+      pendingOrders,
+      completedOrders,
+      totalCustomers: uniqueCustomers,
+      recentOrders,
+    })
+  }, [isAuthenticated, router, orders])
+
+  if (!isAuthenticated) {
+    return <div>Loading...</div>
   }
 
   return (
@@ -85,18 +73,31 @@ export default function AdminDashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalOrders}</div>
-              <p className="text-xs text-muted-foreground">Semua pesanan</p>
+              <p className="text-xs text-muted-foreground">
+                {stats.pendingOrders} menunggu, {stats.completedOrders} selesai
+              </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Produk</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Total Pendapatan</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalProducts}</div>
-              <p className="text-xs text-muted-foreground">Produk aktif</p>
+              <div className="text-2xl font-bold">Rp {stats.totalRevenue.toLocaleString("id-ID")}</div>
+              <p className="text-xs text-muted-foreground">Dari {stats.totalOrders} pesanan</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pesanan Pending</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.pendingOrders}</div>
+              <p className="text-xs text-muted-foreground">Perlu diproses</p>
             </CardContent>
           </Card>
 
@@ -110,109 +111,121 @@ export default function AdminDashboardPage() {
               <p className="text-xs text-muted-foreground">Pelanggan unik</p>
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Pendapatan</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatPrice(stats.totalRevenue)}</div>
-              <p className="text-xs text-muted-foreground">Dari semua pesanan</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Order Status Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Menunggu</CardTitle>
-              <Clock className="h-4 w-4 text-yellow-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">{stats.pendingOrders}</div>
-              <p className="text-xs text-muted-foreground">Perlu konfirmasi</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Dikonfirmasi</CardTitle>
-              <CheckCircle className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{stats.confirmedOrders}</div>
-              <p className="text-xs text-muted-foreground">Siap diproses</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Dikirim</CardTitle>
-              <Truck className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{stats.shippedOrders}</div>
-              <p className="text-xs text-muted-foreground">Dalam pengiriman</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Terkirim</CardTitle>
-              <CheckCircle className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats.deliveredOrders}</div>
-              <p className="text-xs text-muted-foreground">Selesai</p>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Recent Orders */}
         <Card>
           <CardHeader>
-            <CardTitle>Pesanan Terbaru</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="w-5 h-5" />
+              Pesanan Terbaru
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            {recentOrders.length > 0 ? (
+            {stats.recentOrders.length === 0 ? (
+              <div className="text-center py-8">
+                <Package className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">Belum ada pesanan</p>
+              </div>
+            ) : (
               <div className="space-y-4">
-                {recentOrders.map((order) => (
+                {stats.recentOrders.map((order) => (
                   <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-4">
-                        <div>
-                          <p className="font-medium">{order.orderNumber}</p>
-                          <p className="text-sm text-muted-foreground">{order.customerName}</p>
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm">{order.items.length} item(s)</p>
-                          <p className="text-sm text-muted-foreground">{formatPrice(order.total)}</p>
-                        </div>
-                        <div>
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}
-                          >
-                            {getStatusText(order.status)}
-                          </span>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {new Date(order.createdAt).toLocaleDateString("id-ID")}
-                        </div>
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                        <ShoppingCart className="w-5 h-5 text-orange-600" />
                       </div>
+                      <div>
+                        <p className="font-medium">#{order.id.slice(0, 8)}</p>
+                        <p className="text-sm text-muted-foreground">{order.customerName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(order.createdAt).toLocaleDateString("id-ID")}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">Rp {order.total.toLocaleString("id-ID")}</p>
+                      <Badge
+                        variant={
+                          order.status === "completed"
+                            ? "default"
+                            : order.status === "processing"
+                              ? "secondary"
+                              : "outline"
+                        }
+                        className="mt-1"
+                      >
+                        {order.status === "pending" && (
+                          <>
+                            <Clock className="w-3 h-3 mr-1" />
+                            Menunggu
+                          </>
+                        )}
+                        {order.status === "processing" && (
+                          <>
+                            <AlertCircle className="w-3 h-3 mr-1" />
+                            Diproses
+                          </>
+                        )}
+                        {order.status === "completed" && (
+                          <>
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Selesai
+                          </>
+                        )}
+                      </Badge>
                     </div>
                   </div>
                 ))}
               </div>
-            ) : (
-              <div className="text-center py-8">
-                <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">Belum ada pesanan</p>
-              </div>
             )}
           </CardContent>
         </Card>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => router.push("/admin/orders")}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <ShoppingCart className="w-5 h-5" />
+                Kelola Pesanan
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">Lihat dan kelola semua pesanan pelanggan</p>
+            </CardContent>
+          </Card>
+
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => router.push("/admin/products")}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Package className="w-5 h-5" />
+                Kelola Produk
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">Tambah, edit, dan hapus produk</p>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:shadow-md transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <TrendingUp className="w-5 h-5" />
+                Laporan
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">Lihat statistik dan analisis penjualan</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </AdminLayout>
   )
