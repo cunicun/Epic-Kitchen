@@ -3,93 +3,115 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { User, Mail, Phone, MapPin, Calendar, Package, ShoppingBag, Edit, Save, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useUser } from "@/lib/user-context"
 import { useOrders } from "@/lib/orders-context"
-import { User, MapPin, Phone, Mail, Calendar, Package, CheckCircle, AlertCircle } from "lucide-react"
+import { formatCurrency, formatDate } from "@/lib/utils"
+import { useToast } from "@/hooks/use-toast"
 
 export default function AccountPage() {
-  const router = useRouter()
   const { user, isAuthenticated, updateProfile } = useUser()
   const { orders } = useOrders()
-  const [isLoading, setIsLoading] = useState(false)
-  const [message, setMessage] = useState("")
-  const [formData, setFormData] = useState({
+  const router = useRouter()
+  const { toast } = useToast()
+
+  const [isEditing, setIsEditing] = useState(false)
+  const [editData, setEditData] = useState({
     name: "",
-    email: "",
     phone: "",
     address: "",
     city: "",
     postalCode: "",
   })
 
+  // Redirect if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
       router.push("/login")
-      return
     }
+  }, [isAuthenticated, router])
 
+  // Initialize edit data when user data is available
+  useEffect(() => {
     if (user) {
-      setFormData({
+      setEditData({
         name: user.name || "",
-        email: user.email || "",
         phone: user.phone || "",
         address: user.address || "",
         city: user.city || "",
         postalCode: user.postalCode || "",
       })
     }
-  }, [user, isAuthenticated, router])
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setMessage("")
-
-    // Simulate loading
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    const success = await updateProfile(formData)
-    if (success) {
-      setMessage("Profil berhasil diperbarui!")
-    } else {
-      setMessage("Gagal memperbarui profil")
-    }
-    setIsLoading(false)
-
-    // Clear message after 3 seconds
-    setTimeout(() => setMessage(""), 3000)
-  }
-
-  const userOrders = orders.filter((order) => order.customerEmail === user?.email)
-  const totalSpent = userOrders.reduce((sum, order) => sum + order.total, 0)
+  }, [user])
 
   if (!isAuthenticated || !user) {
     return (
       <div className="container py-16">
         <div className="text-center">
-          <p>Redirecting to login...</p>
+          <p>Memuat...</p>
         </div>
       </div>
     )
   }
 
+  // Get user orders
+  const userOrders = orders.filter((order) => order.customerEmail === user.email)
+  const totalSpent = userOrders.reduce((sum, order) => sum + order.total, 0)
+
+  const handleEditToggle = () => {
+    if (isEditing) {
+      // Cancel editing - reset data
+      setEditData({
+        name: user.name || "",
+        phone: user.phone || "",
+        address: user.address || "",
+        city: user.city || "",
+        postalCode: user.postalCode || "",
+      })
+    }
+    setIsEditing(!isEditing)
+  }
+
+  const handleSave = () => {
+    updateProfile(editData)
+    setIsEditing(false)
+    toast({
+      title: "Profil berhasil diperbarui",
+      description: "Informasi akun Anda telah disimpan.",
+    })
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setEditData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      pending: { label: "Menunggu", variant: "secondary" as const },
+      processing: { label: "Diproses", variant: "default" as const },
+      shipped: { label: "Dikirim", variant: "outline" as const },
+      delivered: { label: "Selesai", variant: "default" as const },
+    }
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
+    return <Badge variant={config.variant}>{config.label}</Badge>
+  }
+
   return (
     <div className="container py-8">
       <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">Akun Saya</h1>
-          <p className="text-muted-foreground">Kelola informasi dan pesanan Anda</p>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold">Akun Saya</h1>
+            <p className="text-muted-foreground">Kelola informasi akun dan pesanan Anda</p>
+          </div>
         </div>
 
         <Tabs defaultValue="profile" className="space-y-6">
@@ -99,122 +121,154 @@ export default function AccountPage() {
             <TabsTrigger value="summary">Ringkasan</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="profile">
+          <TabsContent value="profile" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="w-5 h-5" />
-                  Informasi Profil
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Informasi Profil</CardTitle>
+                    <CardDescription>Kelola informasi pribadi Anda</CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    {isEditing ? (
+                      <>
+                        <Button size="sm" onClick={handleSave}>
+                          <Save className="w-4 h-4 mr-2" />
+                          Simpan
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={handleEditToggle}>
+                          <X className="w-4 h-4 mr-2" />
+                          Batal
+                        </Button>
+                      </>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={handleEditToggle}>
+                        <Edit className="w-4 h-4 mr-2" />
+                        Edit
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="name">Nama Lengkap</Label>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Nama Lengkap</Label>
+                    {isEditing ? (
                       <Input
                         id="name"
                         name="name"
-                        value={formData.name}
+                        value={editData.name}
                         onChange={handleInputChange}
-                        placeholder="Nama lengkap"
-                        required
+                        placeholder="Masukkan nama lengkap"
                       />
-                    </div>
-                    <div>
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        placeholder="email@example.com"
-                        required
-                      />
-                    </div>
+                    ) : (
+                      <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                        <User className="w-4 h-4 text-muted-foreground" />
+                        <span>{user.name || "Belum diisi"}</span>
+                      </div>
+                    )}
                   </div>
 
-                  <div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                      <Mail className="w-4 h-4 text-muted-foreground" />
+                      <span>{user.email}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Email tidak dapat diubah</p>
+                  </div>
+
+                  <div className="space-y-2">
                     <Label htmlFor="phone">Nomor Telepon</Label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      placeholder="+62 812 3456 7890"
-                    />
+                    {isEditing ? (
+                      <Input
+                        id="phone"
+                        name="phone"
+                        value={editData.phone}
+                        onChange={handleInputChange}
+                        placeholder="+62 812 3456 7890"
+                      />
+                    ) : (
+                      <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                        <Phone className="w-4 h-4 text-muted-foreground" />
+                        <span>{user.phone || "Belum diisi"}</span>
+                      </div>
+                    )}
                   </div>
 
-                  <div>
-                    <Label htmlFor="address">Alamat Lengkap</Label>
-                    <Input
-                      id="address"
-                      name="address"
-                      value={formData.address}
-                      onChange={handleInputChange}
-                      placeholder="Jl. Contoh No. 123"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="city">Kota</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="city">Kota</Label>
+                    {isEditing ? (
                       <Input
                         id="city"
                         name="city"
-                        value={formData.city}
+                        value={editData.city}
                         onChange={handleInputChange}
                         placeholder="Jakarta"
                       />
-                    </div>
-                    <div>
-                      <Label htmlFor="postalCode">Kode Pos</Label>
+                    ) : (
+                      <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                        <MapPin className="w-4 h-4 text-muted-foreground" />
+                        <span>{user.city || "Belum diisi"}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="address">Alamat Lengkap</Label>
+                    {isEditing ? (
+                      <Input
+                        id="address"
+                        name="address"
+                        value={editData.address}
+                        onChange={handleInputChange}
+                        placeholder="Jl. Contoh No. 123, RT/RW 01/02"
+                      />
+                    ) : (
+                      <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                        <MapPin className="w-4 h-4 text-muted-foreground" />
+                        <span>{user.address || "Belum diisi"}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="postalCode">Kode Pos</Label>
+                    {isEditing ? (
                       <Input
                         id="postalCode"
                         name="postalCode"
-                        value={formData.postalCode}
+                        value={editData.postalCode}
                         onChange={handleInputChange}
                         placeholder="12345"
                       />
-                    </div>
+                    ) : (
+                      <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                        <MapPin className="w-4 h-4 text-muted-foreground" />
+                        <span>{user.postalCode || "Belum diisi"}</span>
+                      </div>
+                    )}
                   </div>
-
-                  {message && (
-                    <div
-                      className={`flex items-center gap-2 text-sm ${message.includes("berhasil") ? "text-green-600" : "text-red-600"}`}
-                    >
-                      {message.includes("berhasil") ? (
-                        <CheckCircle className="w-4 h-4" />
-                      ) : (
-                        <AlertCircle className="w-4 h-4" />
-                      )}
-                      {message}
-                    </div>
-                  )}
-
-                  <Button type="submit" disabled={isLoading}>
-                    {isLoading ? "Menyimpan..." : "Simpan Perubahan"}
-                  </Button>
-                </form>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="orders">
+          <TabsContent value="orders" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="w-5 h-5" />
-                  Riwayat Pesanan
-                </CardTitle>
+                <CardTitle>Riwayat Pesanan</CardTitle>
+                <CardDescription>Lihat semua pesanan yang pernah Anda buat</CardDescription>
               </CardHeader>
               <CardContent>
                 {userOrders.length === 0 ? (
                   <div className="text-center py-8">
                     <Package className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">Belum ada pesanan</p>
-                    <Button className="mt-4" onClick={() => router.push("/products")}>
+                    <h3 className="text-lg font-medium mb-2">Belum ada pesanan</h3>
+                    <p className="text-muted-foreground mb-4">Anda belum melakukan pemesanan apapun</p>
+                    <Button onClick={() => router.push("/products")}>
+                      <ShoppingBag className="w-4 h-4 mr-2" />
                       Mulai Belanja
                     </Button>
                   </div>
@@ -222,28 +276,27 @@ export default function AccountPage() {
                   <div className="space-y-4">
                     {userOrders.map((order) => (
                       <div key={order.id} className="border rounded-lg p-4">
-                        <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center justify-between mb-3">
                           <div>
-                            <p className="font-medium">Order #{order.id.slice(0, 8)}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {new Date(order.createdAt).toLocaleDateString("id-ID", {
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                              })}
-                            </p>
+                            <h4 className="font-medium">Pesanan #{order.id}</h4>
+                            <p className="text-sm text-muted-foreground">{formatDate(order.createdAt)}</p>
                           </div>
-                          <Badge variant={order.status === "completed" ? "default" : "secondary"}>
-                            {order.status === "pending" && "Menunggu"}
-                            {order.status === "processing" && "Diproses"}
-                            {order.status === "completed" && "Selesai"}
-                          </Badge>
+                          {getStatusBadge(order.status)}
                         </div>
-                        <div className="text-sm text-muted-foreground mb-2">
-                          {order.items.length} item • Total: Rp {order.total.toLocaleString("id-ID")}
+                        <div className="space-y-2">
+                          {order.items.map((item, index) => (
+                            <div key={index} className="flex justify-between text-sm">
+                              <span>
+                                {item.name} x {item.quantity}
+                              </span>
+                              <span>{formatCurrency(item.price * item.quantity)}</span>
+                            </div>
+                          ))}
                         </div>
-                        <div className="text-sm">
-                          <strong>Items:</strong> {order.items.map((item) => item.name).join(", ")}
+                        <Separator className="my-3" />
+                        <div className="flex justify-between font-medium">
+                          <span>Total</span>
+                          <span>{formatCurrency(order.total)}</span>
                         </div>
                       </div>
                     ))}
@@ -253,76 +306,76 @@ export default function AccountPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="summary">
+          <TabsContent value="summary" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card>
-                <CardHeader className="pb-3">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Member Sejak</CardTitle>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-2xl font-bold">
-                      {new Date(user.createdAt).toLocaleDateString("id-ID", {
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </span>
-                  </div>
+                  <div className="text-2xl font-bold">{formatDate(user.createdAt)}</div>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader className="pb-3">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Pesanan</CardTitle>
+                  <Package className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center gap-2">
-                    <Package className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-2xl font-bold">{userOrders.length}</span>
-                  </div>
+                  <div className="text-2xl font-bold">{userOrders.length}</div>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader className="pb-3">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Belanja</CardTitle>
+                  <ShoppingBag className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold">Rp {totalSpent.toLocaleString("id-ID")}</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="md:col-span-3">
-                <CardHeader>
-                  <CardTitle className="text-sm font-medium">Informasi Kontak</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <Mail className="w-4 h-4 text-muted-foreground" />
-                    <span>{user.email}</span>
-                  </div>
-                  {user.phone && (
-                    <div className="flex items-center gap-3">
-                      <Phone className="w-4 h-4 text-muted-foreground" />
-                      <span>{user.phone}</span>
-                    </div>
-                  )}
-                  {user.address && (
-                    <div className="flex items-center gap-3">
-                      <MapPin className="w-4 h-4 text-muted-foreground" />
-                      <span>
-                        {user.address}
-                        {user.city && `, ${user.city}`}
-                        {user.postalCode && ` ${user.postalCode}`}
-                      </span>
-                    </div>
-                  )}
+                  <div className="text-2xl font-bold">{formatCurrency(totalSpent)}</div>
                 </CardContent>
               </Card>
             </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Informasi Kontak</CardTitle>
+                <CardDescription>Informasi kontak yang tersimpan di akun Anda</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <Mail className="w-5 h-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">{user.email}</p>
+                    <p className="text-sm text-muted-foreground">Email utama</p>
+                  </div>
+                </div>
+                {user.phone && (
+                  <div className="flex items-center gap-3">
+                    <Phone className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">{user.phone}</p>
+                      <p className="text-sm text-muted-foreground">Nomor telepon</p>
+                    </div>
+                  </div>
+                )}
+                {user.address && (
+                  <div className="flex items-center gap-3">
+                    <MapPin className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">
+                        {user.address}
+                        {user.city && `, ${user.city}`}
+                        {user.postalCode && ` ${user.postalCode}`}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Alamat pengiriman</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

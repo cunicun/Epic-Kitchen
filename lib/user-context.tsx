@@ -1,59 +1,48 @@
 "use client"
 
 import type React from "react"
-import { createContext, useState, useEffect, useContext } from "react"
+import { createContext, useContext, useState, useEffect } from "react"
 
 interface User {
   id: string
   name: string
   email: string
-  password?: string
-  phone: string
-  address: string
-  city: string
-  postalCode: string
+  phone?: string
+  address?: string
+  city?: string
+  postalCode?: string
   createdAt: string
 }
 
-interface UserContextProps {
+interface UserContextType {
   user: User | null
-  setUser: React.Dispatch<React.SetStateAction<User | null>>
   isAuthenticated: boolean
-  setIsAuthenticated: React.Dispatch<React.SetStateAction<boolean>>
   login: (email: string, password: string) => Promise<boolean>
+  register: (userData: {
+    name: string
+    email: string
+    phone: string
+    password: string
+  }) => Promise<boolean>
   logout: () => void
-  register: (data: Omit<User, "id" | "createdAt"> & { password: string }) => Promise<boolean>
-  updateProfile: (data: Partial<User>) => Promise<boolean>
+  updateProfile: (userData: Partial<User>) => Promise<boolean>
 }
 
-const UserContext = createContext<UserContextProps>({
-  user: null,
-  setUser: () => {},
-  isAuthenticated: false,
-  setIsAuthenticated: () => {},
-  login: async () => false,
-  logout: () => {},
-  register: async () => false,
-  updateProfile: async () => false,
-})
+const UserContext = createContext<UserContextType | undefined>(undefined)
 
-export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
 
+  // Initialize demo user and load session
   useEffect(() => {
-    const userSession = localStorage.getItem("user-session")
-    if (userSession) {
-      const userData = JSON.parse(userSession)
-      setUser(userData)
-      setIsAuthenticated(true)
-    }
+    // Create demo user if not exists
+    const existingUsers = JSON.parse(localStorage.getItem("registered-users") || "[]")
+    const demoUser = existingUsers.find((u: User) => u.email === "demo@email.com")
 
-    // Initialize demo user if not exists
-    const users = JSON.parse(localStorage.getItem("registered-users") || "[]")
-    if (users.length === 0) {
-      const demoUser = {
-        id: "demo-user-1",
+    if (!demoUser) {
+      const newDemoUser = {
+        id: "demo-user-id",
         name: "Demo User",
         email: "demo@email.com",
         password: "demo123",
@@ -63,75 +52,84 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         postalCode: "12345",
         createdAt: new Date().toISOString(),
       }
-      localStorage.setItem("registered-users", JSON.stringify([demoUser]))
+      existingUsers.push(newDemoUser)
+      localStorage.setItem("registered-users", JSON.stringify(existingUsers))
+    }
+
+    // Load existing session
+    const savedSession = localStorage.getItem("user-session")
+    if (savedSession) {
+      try {
+        const userData = JSON.parse(savedSession)
+        setUser(userData)
+        setIsAuthenticated(true)
+      } catch (error) {
+        console.error("Error loading user session:", error)
+        localStorage.removeItem("user-session")
+      }
     }
   }, [])
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const users: User[] = JSON.parse(localStorage.getItem("registered-users") || "[]")
+    try {
+      const registeredUsers = JSON.parse(localStorage.getItem("registered-users") || "[]")
+      const foundUser = registeredUsers.find((u: any) => u.email === email && u.password === password)
 
-    // Find user by email and password
-    const foundUser = users.find((u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password)
+      if (foundUser) {
+        const { password: _, ...userWithoutPassword } = foundUser
+        setUser(userWithoutPassword)
+        setIsAuthenticated(true)
+        localStorage.setItem("user-session", JSON.stringify(userWithoutPassword))
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error("Login error:", error)
+      return false
+    }
+  }
 
-    if (foundUser) {
-      const userWithoutPassword = { ...foundUser }
-      delete userWithoutPassword.password
+  const register = async (userData: {
+    name: string
+    email: string
+    phone: string
+    password: string
+  }): Promise<boolean> => {
+    try {
+      const registeredUsers = JSON.parse(localStorage.getItem("registered-users") || "[]")
 
+      // Check if email already exists
+      const existingUser = registeredUsers.find((u: any) => u.email === userData.email)
+      if (existingUser) {
+        return false // Email already exists
+      }
+
+      const newUser = {
+        id: `user-${Date.now()}`,
+        name: userData.name,
+        email: userData.email,
+        phone: userData.phone,
+        password: userData.password,
+        address: "",
+        city: "",
+        postalCode: "",
+        createdAt: new Date().toISOString(),
+      }
+
+      registeredUsers.push(newUser)
+      localStorage.setItem("registered-users", JSON.stringify(registeredUsers))
+
+      // Auto-login after registration
+      const { password: _, ...userWithoutPassword } = newUser
       setUser(userWithoutPassword)
       setIsAuthenticated(true)
       localStorage.setItem("user-session", JSON.stringify(userWithoutPassword))
+
       return true
-    }
-
-    return false
-  }
-
-  const register = async (data: Omit<User, "id" | "createdAt"> & { password: string }): Promise<boolean> => {
-    const users: User[] = JSON.parse(localStorage.getItem("registered-users") || "[]")
-
-    // Check for duplicate email
-    if (users.some((u) => u.email.toLowerCase() === data.email.toLowerCase())) {
+    } catch (error) {
+      console.error("Registration error:", error)
       return false
     }
-
-    const newUser: User = {
-      id: crypto.randomUUID(),
-      name: data.name,
-      email: data.email,
-      phone: data.phone || "",
-      address: data.address || "",
-      city: data.city || "",
-      postalCode: data.postalCode || "",
-      createdAt: new Date().toISOString(),
-      password: data.password,
-    }
-
-    localStorage.setItem("registered-users", JSON.stringify([...users, newUser]))
-
-    // Auto login after registration
-    await login(data.email, data.password)
-    return true
-  }
-
-  const updateProfile = async (data: Partial<User>): Promise<boolean> => {
-    if (!user) return false
-
-    const users: User[] = JSON.parse(localStorage.getItem("registered-users") || "[]")
-    const userIndex = users.findIndex((u) => u.id === user.id)
-
-    if (userIndex === -1) return false
-
-    const updatedUser = { ...users[userIndex], ...data }
-    users[userIndex] = updatedUser
-
-    localStorage.setItem("registered-users", JSON.stringify(users))
-
-    const userWithoutPassword = { ...updatedUser }
-    delete userWithoutPassword.password
-
-    setUser(userWithoutPassword)
-    localStorage.setItem("user-session", JSON.stringify(userWithoutPassword))
-    return true
   }
 
   const logout = () => {
@@ -140,13 +138,49 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem("user-session")
   }
 
+  const updateProfile = async (userData: Partial<User>): Promise<boolean> => {
+    try {
+      if (!user) return false
+
+      const updatedUser = { ...user, ...userData }
+      setUser(updatedUser)
+      localStorage.setItem("user-session", JSON.stringify(updatedUser))
+
+      // Update in registered users list
+      const registeredUsers = JSON.parse(localStorage.getItem("registered-users") || "[]")
+      const userIndex = registeredUsers.findIndex((u: any) => u.id === user.id)
+      if (userIndex !== -1) {
+        registeredUsers[userIndex] = { ...registeredUsers[userIndex], ...userData }
+        localStorage.setItem("registered-users", JSON.stringify(registeredUsers))
+      }
+
+      return true
+    } catch (error) {
+      console.error("Update profile error:", error)
+      return false
+    }
+  }
+
   return (
     <UserContext.Provider
-      value={{ user, setUser, isAuthenticated, setIsAuthenticated, login, logout, register, updateProfile }}
+      value={{
+        user,
+        isAuthenticated,
+        login,
+        register,
+        logout,
+        updateProfile,
+      }}
     >
       {children}
     </UserContext.Provider>
   )
 }
 
-export const useUser = () => useContext(UserContext)
+export function useUser() {
+  const context = useContext(UserContext)
+  if (context === undefined) {
+    throw new Error("useUser must be used within a UserProvider")
+  }
+  return context
+}

@@ -26,15 +26,13 @@ export default function RootLayout({
   return (
     <html lang="id" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <UserProvider>
             <AdminProvider>
               <OrdersProvider>
                 <CartProvider>
-                  <div className="relative flex min-h-screen flex-col">
-                    <Header />
-                    <main className="flex-1">{children}</main>
-                  </div>
+                  <Header />
+                  <main className="min-h-screen">{children}</main>
                   <Toaster />
                 </CartProvider>
               </OrdersProvider>

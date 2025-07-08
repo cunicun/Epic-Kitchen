@@ -91,14 +91,24 @@ export function Header() {
                     </Link>
                   ))}
                 </div>
-                {isAuthenticated && (
+                {isAuthenticated ? (
                   <div className="flex flex-col space-y-2 pt-4 border-t">
-                    <Link href="/account" className="text-sm">
+                    <div className="text-sm font-medium text-green-600">Halo, {user?.name}!</div>
+                    <Link href="/account" className="text-sm hover:text-foreground/80">
                       Akun Saya
                     </Link>
-                    <button onClick={handleLogout} className="text-sm text-left text-red-600">
+                    <button onClick={handleLogout} className="text-sm text-left text-red-600 hover:text-red-700">
                       Keluar
                     </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col space-y-2 pt-4 border-t">
+                    <Link href="/login" className="text-sm hover:text-foreground/80">
+                      Masuk
+                    </Link>
+                    <Link href="/register" className="text-sm hover:text-foreground/80">
+                      Daftar
+                    </Link>
                   </div>
                 )}
               </div>
@@ -116,37 +126,40 @@ export function Header() {
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <User className="h-5 w-5" />
-                    <span className="sr-only">Account Menu</span>
+                  <Button variant="ghost" className="text-sm font-medium px-3 py-2">
+                    Halo, {user?.name}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="w-56">
                   <div className="px-2 py-1.5">
                     <p className="text-sm font-medium">{user?.name}</p>
                     <p className="text-xs text-muted-foreground">{user?.email}</p>
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/account">
+                    <Link href="/account" className="cursor-pointer">
                       <User className="mr-2 h-4 w-4" />
                       Akun Saya
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />
                     Keluar
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Link href="/login">
-                <Button variant="ghost" size="icon">
-                  <User className="h-5 w-5" />
-                  <span className="sr-only">Login</span>
-                </Button>
-              </Link>
+              <div className="flex items-center space-x-2">
+                <Link href="/login">
+                  <Button variant="ghost" className="text-sm font-medium px-3 py-2">
+                    Masuk
+                  </Button>
+                </Link>
+                <Link href="/register">
+                  <Button className="text-sm font-medium px-3 py-2">Daftar</Button>
+                </Link>
+              </div>
             )}
             <Link href="/cart">
               <Button variant="ghost" size="icon" className="relative">
