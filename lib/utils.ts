@@ -6,6 +6,11 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatCurrency(amount: number): string {
+  if (typeof amount !== "number" || isNaN(amount)) {
+    console.warn("formatCurrency received invalid amount:", amount)
+    return "Rp 0"
+  }
+
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
     currency: "IDR",

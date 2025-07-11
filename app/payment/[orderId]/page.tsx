@@ -23,10 +23,15 @@ export default function PaymentPage({ params }: PaymentPageProps) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    console.log("🔍 Looking for order:", params.orderId)
+    console.log("📋 Available orders:", orders)
+
     const foundOrder = orders.find((o) => o.id === params.orderId)
     if (foundOrder) {
+      console.log("✅ Found order:", foundOrder)
       setOrder(foundOrder)
-      console.log("🔍 Found Order for Payment:", foundOrder)
+    } else {
+      console.log("❌ Order not found")
     }
     setLoading(false)
   }, [params.orderId, orders])

@@ -14,20 +14,27 @@ import { Separator } from "@/components/ui/separator"
 import { useCart } from "@/lib/cart-context"
 import { useUser } from "@/lib/user-context"
 import { useOrders } from "@/lib/orders-context"
-import { formatCurrency, generateOrderId, validateEmail, validatePhone, calculateShippingCost } from "@/lib/utils"
+import { formatCurrency, generateOrderId, validateEmail, validatePhone } from "@/lib/utils"
 import { PaymentSuccessModal } from "@/components/payment-success-modal"
 import { CreditCard, Smartphone, Truck, ArrowLeft, ShoppingCart, MapPin, User } from "lucide-react"
 import { toast } from "sonner"
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { items, total, clearCart } = useCart()
+  const { items, getTotalPrice, clearCart } = useCart()
   const { user } = useUser()
   const { addOrder } = useOrders()
 
   const [loading, setLoading] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [orderData, setOrderData] = useState<any>(null)
+
+  // Calculate totals
+  const subtotal = getTotalPrice()
+  const shippingCost = 15000
+  const total = subtotal + shippingCost
+
+  console.log("💰 Checkout Totals:", { subtotal, shippingCost, total })
 
   // Form state
   const [formData, setFormData] = useState({
@@ -43,14 +50,24 @@ export default function CheckoutPage() {
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
 
-  const shippingCost = calculateShippingCost(items)
-  const finalTotal = total + shippingCost
-
   useEffect(() => {
+    console.log("🛒 Cart Items:", items)
     if (items.length === 0) {
+      console.log("❌ No items in cart, redirecting...")
       router.push("/cart")
     }
   }, [items, router])
+
+  useEffect(() => {
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        customerName: user.name || "",
+        email: user.email || "",
+        phone: user.phone || "",
+      }))
+    }
+  }, [user])
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {}
@@ -96,6 +113,7 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log("🚀 Starting checkout process...")
 
     if (!validateForm()) {
       toast.error("Mohon lengkapi semua field yang wajib diisi")
@@ -105,6 +123,7 @@ export default function CheckoutPage() {
     setLoading(true)
 
     try {
+      console.log("⏳ Processing order...")
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 2000))
 
@@ -123,26 +142,47 @@ export default function CheckoutPage() {
         notes: formData.notes,
         paymentMethod: formData.paymentMethod,
         items: items.map((item) => ({
-          id: item.id,
-          productName: item.name,
-          name: item.name,
-          price: item.price,
+          id: item.product.id,
+          productId: item.product.id,
+          productName: item.product.name,
+          name: item.product.name,
+          price: item.product.price,
           quantity: item.quantity,
-          image: item.image,
+          image: item.product.image,
         })),
-        subtotal: total,
-        shippingCost,
-        total: finalTotal,
+        subtotal: subtotal,
+        shippingCost: shippingCost,
+        total: total,
         status: "pending",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
 
+      console.log("📦 Creating Order:", newOrder)
+
       addOrder(newOrder)
-      setOrderData(newOrder)
+
+      const successOrderData = {
+        id: orderId,
+        total: total,
+        paymentMethod: formData.paymentMethod,
+        customerName: formData.customerName,
+        customerEmail: formData.email,
+        items: items.map((item) => ({
+          id: item.product.id,
+          name: item.product.name,
+          price: item.product.price,
+          quantity: item.quantity,
+        })),
+      }
+
+      console.log("✅ Order created successfully, showing success modal...")
+      setOrderData(successOrderData)
       setShowSuccessModal(true)
-      clearCart()
+
+      toast.success("Pesanan berhasil dibuat!")
     } catch (error) {
+      console.error("❌ Checkout error:", error)
       toast.error("Terjadi kesalahan saat memproses pesanan")
     } finally {
       setLoading(false)
@@ -150,8 +190,14 @@ export default function CheckoutPage() {
   }
 
   const handleSuccessModalClose = () => {
+    console.log("🎉 Success modal closing, clearing cart and redirecting...")
     setShowSuccessModal(false)
-    router.push(`/payment/${orderData.id}`)
+    clearCart()
+
+    if (orderData) {
+      console.log("🧾 Redirecting to payment instructions:", `/payment/${orderData.id}`)
+      router.push(`/payment/${orderData.id}`)
+    }
   }
 
   if (items.length === 0) {
@@ -318,7 +364,7 @@ export default function CheckoutPage() {
                             <Label htmlFor="transfer" className="font-medium cursor-pointer">
                               Transfer Bank BCA
                             </Label>
-                            <p className="text-sm text-gray-500">Virtual Account 4 Digit - Otomatis terkonfirmasi</p>
+                            <p className="text-sm text-gray-500">Virtual Account - Otomatis terkonfirmasi</p>
                           </div>
                         </div>
                       </div>
@@ -333,7 +379,7 @@ export default function CheckoutPage() {
                             <Label htmlFor="ewallet" className="font-medium cursor-pointer">
                               E-Wallet
                             </Label>
-                            <p className="text-sm text-gray-500">GoPay, OVO, DANA, ShopeePay - Scan QR Code</p>
+                            <p className="text-sm text-gray-500">GoPay, OVO, DANA, ShopeePay</p>
                           </div>
                         </div>
                       </div>
@@ -348,7 +394,7 @@ export default function CheckoutPage() {
                             <Label htmlFor="cod" className="font-medium cursor-pointer">
                               Bayar di Tempat (COD)
                             </Label>
-                            <p className="text-sm text-gray-500">Bayar saat barang diterima - Cash on Delivery</p>
+                            <p className="text-sm text-gray-500">Bayar saat barang diterima</p>
                           </div>
                         </div>
                       </div>
@@ -367,19 +413,19 @@ export default function CheckoutPage() {
                 <CardContent className="space-y-4">
                   <div className="space-y-3">
                     {items.map((item) => (
-                      <div key={item.id} className="flex items-center gap-3">
+                      <div key={item.product.id} className="flex items-center gap-3">
                         <img
-                          src={item.image || "/placeholder.svg?height=48&width=48"}
-                          alt={item.name}
+                          src={item.product.image || "/placeholder.svg?height=48&width=48"}
+                          alt={item.product.name}
                           className="w-12 h-12 object-cover rounded-lg"
                         />
                         <div className="flex-1">
-                          <p className="font-medium text-sm">{item.name}</p>
+                          <p className="font-medium text-sm">{item.product.name}</p>
                           <p className="text-sm text-gray-500">
-                            {item.quantity}x {formatCurrency(item.price)}
+                            {item.quantity}x {formatCurrency(item.product.price)}
                           </p>
                         </div>
-                        <p className="font-medium">{formatCurrency(item.price * item.quantity)}</p>
+                        <p className="font-medium">{formatCurrency(item.product.price * item.quantity)}</p>
                       </div>
                     ))}
                   </div>
@@ -389,7 +435,7 @@ export default function CheckoutPage() {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span>Subtotal ({items.length} item)</span>
-                      <span>{formatCurrency(total)}</span>
+                      <span>{formatCurrency(subtotal)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Ongkos Kirim</span>
@@ -398,7 +444,7 @@ export default function CheckoutPage() {
                     <Separator />
                     <div className="flex justify-between font-bold text-lg">
                       <span>Total</span>
-                      <span>{formatCurrency(finalTotal)}</span>
+                      <span>{formatCurrency(total)}</span>
                     </div>
                   </div>
 
@@ -409,7 +455,7 @@ export default function CheckoutPage() {
                         Memproses Pesanan...
                       </div>
                     ) : (
-                      `Bayar ${formatCurrency(finalTotal)}`
+                      `Bayar ${formatCurrency(total)}`
                     )}
                   </Button>
 
